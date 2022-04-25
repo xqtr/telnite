@@ -580,8 +580,10 @@ class UserInterface:
         
 def parser():
   global HEIGHT,WIDTH,BEEP,CAPTURE,CAPTUREFILE,QUITEMODE,ENABLEKEYSOUND,KBBACKSP
+  global HOST,PORT
   res = True
   parser = argparse.ArgumentParser(description="Telnite // Python3 ANSI-BBS Telnet client for terminal.")
+  parser.add_argument('address', metavar='address[:port]',action='store', type=str, help="The telnet address to connect to.")
   parser.add_argument('-w', '--width', dest='width', action='store', metavar='width', help="Force terminal width in chars.")
   parser.add_argument('--height', dest='height', action='store', metavar='height', help="Force terminal height in chars.")
   parser.add_argument('--telnet-guide', dest='guide', action='store', metavar='term', help="Connect to a BBS from the TelnetBBSGuide.")
@@ -599,6 +601,17 @@ def parser():
   if args.config:
     createconfigfile("./")
     return False
+    
+  if not args.address:
+    return False
+  else:
+    if ":" in args.address:
+      tmp = args.address.split(':')
+      HOST = tmp[0]
+      PORT = int(tmp[1])
+    else:
+      HOST = args.address
+      PORT = 23
   
   if args.guide:
     bbslistselect(args.guide)
