@@ -77,8 +77,8 @@ KBKEYSOUND = ''
 KBENTERSOUND = ''
 MODEMSOUND = ''
 
-HOST = "192.168.1.201"
-PORT = 9999
+HOST = ""
+PORT = 23
 BBS = {}
 BBS['name'] = ''
 BBS['username'] = ''
@@ -329,8 +329,13 @@ def renderansi(ansi):
           y=min(y+d,HEIGHT)
           gotoxy(x,y)
         elif s[i] == 'D': #back
-          if opt != '': d = int(opt) 
-          else: d =1
+          if opt != '' : 
+            try:
+              d = int(opt) 
+            except:
+              d = 1
+          else: 
+            d = 1
           x=max(x-d, 1)
           gotoxy(x,y)
         elif s[i] == 'G': # goto to column
@@ -583,7 +588,7 @@ def parser():
   global HOST,PORT
   res = True
   parser = argparse.ArgumentParser(description="Telnite // Python3 ANSI-BBS Telnet client for terminal.")
-  parser.add_argument('address', metavar='address[:port]',action='store', type=str, help="The telnet address to connect to.")
+  parser.add_argument('-a','--address', metavar='address[:port]',action='store', type=str, help="The telnet address to connect to.")
   parser.add_argument('-w', '--width', dest='width', action='store', metavar='width', help="Force terminal width in chars.")
   parser.add_argument('--height', dest='height', action='store', metavar='height', help="Force terminal height in chars.")
   parser.add_argument('--telnet-guide', dest='guide', action='store', metavar='term', help="Connect to a BBS from the TelnetBBSGuide.")
@@ -602,9 +607,7 @@ def parser():
     createconfigfile("./")
     return False
     
-  if not args.address:
-    return False
-  else:
+  if args.address:
     if ":" in args.address:
       tmp = args.address.split(':')
       HOST = tmp[0]
