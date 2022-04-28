@@ -16,5 +16,5 @@ then
        port=23
     fi
     echo "Connecting to: $address:$port..."
-    ./telnite.py $address:$port
+    ./telnite.py -a $address:$port
 fi

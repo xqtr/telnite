@@ -3,6 +3,7 @@
 import os
 import telnetlib
 import configparser
+import textwrap
 import time, datetime
 import termios
 import atexit
@@ -65,6 +66,9 @@ mode = 0
 CRLF = chr(10)+chr(13)
 BEEP=False
 
+opt = ''
+esc = False
+
 APPNAME = "telnite"
 CONFIGDIR = os.path.join(os.path.expanduser("~"), ".config")+os.sep+APPNAME+os.sep
 CONFIG = configparser.ConfigParser()
@@ -93,7 +97,26 @@ BBS['www'] = ''
 BBS['location'] = ''
 BBS['sysop'] = ''
 
+program_descripton = f'''
+    Telnite v1.0
+    -------------
+    
+    An ANSI-BBS telnet client for use in terminals like Gnome_terminal, xterm, etc.
+
+    Created by XQTR of Another Droid BBS 
+    
+    [] https://github.com/xqtr/telnite
+    [] telnet://andr01d.zapto.org:9999
+    
+    Licensed under GPL3
+   
+    '''
+
 telnet = telnetlib.Telnet()
+
+class RawFormatter(argparse.HelpFormatter):
+  def _fill_text(self, text, width, indent):
+    return "\n".join([textwrap.fill(line, width) for line in textwrap.indent(textwrap.dedent(text), indent).splitlines()])
 
 def readconfigfile():
   global CONFIG,BEEP,WIDTH,HEIGHT,KBBACKSP,ENABLEKEYSOUND,KBKEYSOUND,KBENTERSOUND
@@ -223,7 +246,7 @@ def beep():
     
 def renderansi(ansi):
   global x,y,WIDTH,HEIGHT
-  global fattr,oldxy,mode
+  global fattr,oldxy,mode,esc,opt
     
   def checkxy():
     global x,y,WIDTH,HEIGHT
@@ -235,8 +258,7 @@ def renderansi(ansi):
       x=1
       y=HEIGHT
   
-  opt = ''
-  esc = False
+  
   # matc = [[32 for x in range(h)] for y in range(w)] 
   # matfg = [[7 for x in range(h)] for y in range(w)]
   # matbg = [[7 for x in range(h)] for y in range(w)]
@@ -267,13 +289,15 @@ def renderansi(ansi):
   
                 
   while i<len(s):
+    #print(i,len(s))
     if not esc:
       if s[i] == chr(27):
-        i+=1
-        if s[i]!="[":
-          esc = False
-        else:
-          esc = True
+        esc = True
+        # i+=1
+        # if s[i]!="[":
+          # esc = False
+        # else:
+          # esc = True
       elif s[i] == chr(0):
         pass
       elif s[i] == chr(8): #backspace
@@ -291,12 +315,16 @@ def renderansi(ansi):
         clrscr()
         x=1
         y=1
+      elif s[i]==chr(14):
+        write('X')
+      elif s[i]==chr(15):
+        write('X')
       elif s[i]==chr(13):
         x = 1
         checkxy()
         gotoxy(x,y)
       elif s[i]==chr(10):
-        x = 1
+        #x = 1
         y+=1
         checkxy()
         gotoxy(x,y)
@@ -309,7 +337,9 @@ def renderansi(ansi):
         x += 1
         checkxy()
     else:
-      if s[i] in ANSICODES:
+      if s[i] == '[':
+        pass
+      elif s[i] in ANSICODES:
         #esc = False
         #logopt("xODE: "+s[i])
         if s[i] == 'C': #forward
@@ -344,7 +374,9 @@ def renderansi(ansi):
             x = d
             gotoxy(x,y)
         elif s[i] == 'h': # terminal codes -> https://man7.org/linux/man-pages/man4/console_codes.4.html
-          pass 
+          write(chr(27)+'['+opt+'h')
+        elif s[i] == 'l': 
+          write(chr(27)+'['+opt+'l')
         elif s[i] == 'n': #report cursor position
           if len(opt)==0:
             pass
@@ -368,18 +400,18 @@ def renderansi(ansi):
         elif s[i] == 'l': #reset mode? nope
           pass
         elif s[i] == 'K': #clear EOL
+#          pdb.set_trace()
           if opt=="": opt="0"
           p = int(opt)
           if p == 2: #erase complete line
-            for i in range(1,WIDTH+1):
-              writexy(i,y,fattr,' ')
+            for d in range(1,WIDTH+1):
+              writexy(d,y,fattr,' ')
           elif p == 1: #from start to current pos
-            for i in range(1,x+1):
-              writexy(i,y,fattr,' ')
+            for d in range(1,x+1):
+              writexy(d,y,fattr,' ')
           elif p == 0 : #from current pos to EOL
-            for i in range(x,WIDTH+1):
-              writexy(i,y,fattr,' ')
-          
+            for d in range(x,WIDTH+1):
+              writexy(d,y,fattr,' ')
         elif s[i] =='H' or s[i] == 'f': #gotoxy
           if len(opt)==0:
             x,y = [1,1]
@@ -387,10 +419,12 @@ def renderansi(ansi):
             k=opt.split(';')
             if len(k)>2:
               pass
-            else:
+            elif len(k)==2:
               y=int(k[0])
               x=int(k[1])
-          gotoxy(x,y)
+              gotoxy(x,y)
+            else:
+              pass
           
         elif s[i]=='m': # set color mode!
           if opt=="":
@@ -562,7 +596,7 @@ class UserInterface:
       try:
         data = telnet.read_very_eager().decode('cp437')
       except:
-        print("Connection closed...")
+        print("\nConnection closed...")
         break
       totaldatabytes += len(data)
       if CAPTURE:
@@ -579,15 +613,18 @@ class UserInterface:
     if not QUITEMODE:
       textcolor(7)
       print("")
-      print("Total data transfer: {}".format(str(approximate_size(totaldatabytes))))
-      print("Connected at: {}".format(logintime.strftime("%Y/%m/%d (y/m/d), %H:%M:%S")))
-      print("Stayed connected for: {}".format(str(datetime.datetime.now()-logintime)))
+      print("Total data transfer : {}".format(str(approximate_size(totaldatabytes))))
+      print("Connected at        : {}".format(logintime.strftime("%Y/%m/%d (y/m/d), %H:%M:%S")))
+      dt = datetime.datetime.now()-logintime
+      print("Stayed connected for: {}".format(str(dt)))
+      print("Average bytes/sec   : {} per sec.".format(str(approximate_size(totaldatabytes // dt.total_seconds()))))
         
 def parser():
   global HEIGHT,WIDTH,BEEP,CAPTURE,CAPTUREFILE,QUITEMODE,ENABLEKEYSOUND,KBBACKSP
   global HOST,PORT
   res = True
-  parser = argparse.ArgumentParser(description="Telnite // Python3 ANSI-BBS Telnet client for terminal.")
+  #parser = argparse.ArgumentParser(description="Telnite // Python3 ANSI-BBS Telnet client for terminal.")
+  parser = argparse.ArgumentParser(description=program_descripton, formatter_class=RawFormatter)
   parser.add_argument('-a','--address', metavar='address[:port]',action='store', type=str, help="The telnet address to connect to.")
   parser.add_argument('-w', '--width', dest='width', action='store', metavar='width', help="Force terminal width in chars.")
   parser.add_argument('--height', dest='height', action='store', metavar='height', help="Force terminal height in chars.")
@@ -599,6 +636,16 @@ def parser():
   parser.add_argument('-q','--quite', dest='quite', action='store_true', help="Don't display any app. related text")
   parser.add_argument('--no-sound', dest='nosound', action='store_true', help="Disable all sound FXs")
   args = parser.parse_args()
+  
+  
+  
+  
+  
+  
+  if len(sys.argv) < 2:
+    #parser.print_usage()
+    parser.print_help()
+    sys.exit(1)
   
   if args.quite:
     QUITEMODE=True
@@ -658,7 +705,11 @@ if ENABLEKEYSOUND:
   
 try:
   #telnet = telnetlib.Telnet(HOST,port=PORT,timeout=5)
-  if not QUITEMODE: print("Connecting to {}".format(BBS['name']))
+  if not QUITEMODE: 
+    if BBS['name']!='':
+      print("Connecting to {}".format(BBS['name']))
+    else:
+      print("Connecting to {}".format(HOST))
   telnet.open(HOST,port=PORT,timeout=5)
   #telnet.set_debuglevel(100)
   time.sleep(1)
