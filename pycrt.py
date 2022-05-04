@@ -357,6 +357,47 @@ def savescreen():
   res = list()
   res.extend(screenbuffer)
   return res
+  
+def savescreen2ansi(filename):
+  global screenbuffer,screenheight,screenwidth
+  cl = [0,4,2,6,1,5,3,7]
+  fg,bg = 7,0
+  ofg,obg = 7,0
+  ansi = ''
+  CRLF = chr(10)+chr(13)
+  
+  encode = 'ascii'
+  if utf: encode = 'utf-8'
+  
+  f = open(filename,'w',encoding=encode)
+  
+  for yy in range(screenheight):
+    for xx in range(screenwidth):
+      c,a = screenbuffer[xx+(yy*screenwidth)]
+      ansi = chr(27)+'['
+      if ord(c)!=0:
+        fg = a % 16
+        bg = a // 16
+        if fg != ofg:
+          if fg>=8:
+            ansi+='1;'+str(30+cl.index(fg-8))
+          else:
+            ansi+='0;'+str(30+cl.index(fg))
+          ofg = fg
+        if bg!=obg:
+          if bg>=8:
+            ansi += '1;'+str(40+cl.index(bg-8))
+          else:
+            ansi += str(40+cl.index(bg))
+          obg = bg
+        if ansi[-1]!='[':
+          ansi+='m'
+          f.write(ansi)
+        f.write(c)
+    f.write(CRLF)
+    ansi = ''
+  
+  f.close()
 
 def restorescreen(buff):
   global screenbuffer

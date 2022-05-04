@@ -48,8 +48,8 @@ KBEND = '[F'
 KBINSERT = '[2~'
 KBDEL = '[3~'
 
-KBUP = '[A'
-KBDOWN = '[B'
+KBUP = chr(27)+'[A'
+KBDOWN = chr(27)+'[B'
 KBLEFT = chr(27)+'[D'
 KBRIGHT = chr(27)+'[C'
 
@@ -81,6 +81,7 @@ ENABLEKEYSOUND = False
 KBKEYSOUND = ''
 KBENTERSOUND = ''
 MODEMSOUND = ''
+STATUSBAR = '30'
 
 HOST = ""
 PORT = 23
@@ -98,6 +99,8 @@ BBS['www'] = ''
 BBS['location'] = ''
 BBS['sysop'] = ''
 BBS['index'] = ''
+
+REGEX = []
 
 program_descripton = f'''
     Telnite v1.0
@@ -130,6 +133,10 @@ class RawFormatter(argparse.HelpFormatter):
   def _fill_text(self, text, width, indent):
     return "\n".join([textwrap.fill(line, width) for line in textwrap.indent(textwrap.dedent(text), indent).splitlines()])
 
+def statusbar(s):
+  global WIDTH,HEIGHT,STATUSBAR
+  writexy(1,HEIGHT,int(STATUSBAR),s.ljust(WIDTH))
+
 def str2bool(v):
   return v.lower() in ("yes", "true", "t", "1")
   
@@ -145,7 +152,7 @@ def initoBBS(filename):
 
 def readconfigfile():
   global CONFIG,BEEP,WIDTH,HEIGHT,KBBACKSP,ENABLEKEYSOUND,KBKEYSOUND,KBENTERSOUND
-  global MODEMSOUND
+  global MODEMSOUND,STATUSBAR,REGEX
   
   if not os.path.isdir(CONFIGDIR):
     os.makedirs(CONFIGDIR)
@@ -157,12 +164,27 @@ def readconfigfile():
   WIDTH = CONFIG.getint("system","width",fallback=80)
   HEIGHT = CONFIG.getint("system","height",fallback=25)
   KBBACKSP = chr(CONFIG.getint("system","backspace",fallback=8))
+  STATUSBAR =  CONFIG.get("system","statusbar",fallback='30')
   
   ENABLEKEYSOUND = CONFIG.getboolean("sounds","enable",fallback=False)
   KBKEYSOUND = CONFIG.get("sounds","key",fallback='')
   KBENTERSOUND = CONFIG.get("sounds","enter",fallback='')
   MODEMSOUND = CONFIG.get("sounds","modem",fallback='')
 
+  ind=0
+  while True:
+    if CONFIG.has_section("regex_"+str(ind)):
+      section = "regex_"+str(ind)
+      rx = {}
+      rx['name'] = CONFIG.get(section,'name')
+      rx['regex'] = CONFIG.get(section,'regex')
+      rx['cmd'] = CONFIG.get(section,'command')
+      REGEX.append(rx)
+      ind+=1
+    else:
+      break
+      
+  
 
 def downloadfile(url,filename):
   os.system("wget {} -O {}".format(url,filename))
@@ -257,6 +279,16 @@ def togglecapture():
     CAPTUREFILE=time.strftime("capture_%Y%m%dT%H%M%SZ.ans", time.gmtime())
   return CAPTURE
   
+def getfilename():
+  global HOST
+  ind = 0
+  while True:
+    if not os.path.isfile(HOST+'_'+str(ind).zfill(5)+'.ans'):
+      return HOST+'_'+str(ind).zfill(5)+'.ans'
+      break
+    else:
+      ind+=1
+  
 def approximate_size(size, flag_1024_or_1000=True):
   units = {1000: ['KB', 'MB', 'GB'], 1024: ['KiB', 'MiB', 'GiB']}
   mult = 1024 if flag_1024_or_1000 else 1000
@@ -275,6 +307,7 @@ def createconfigfile(path):
     fn.write("#8 is Backspace\n")
     fn.write("#127 is Delete\n")
     fn.write("backspace=8\n")
+    fn.write("statusbar=30\n")
     fn.write("\n")
     fn.write("#Keyboard CLICK sounds\n")
     fn.write("[sounds]\n")
@@ -283,6 +316,41 @@ def createconfigfile(path):
     fn.write("key=\n")
     fn.write("enter=\n")
     fn.write("modem=\n")
+    fn.write("\n")
+    fn.write("[regex_1]")
+    fn.write("Name=Email")
+    fn.write("RegEx=[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,6}")
+    fn.write("Command=")
+    fn.write("\n")
+    fn.write("[regex_2]")
+    fn.write("Name=Date")
+    fn.write("RegEx=\d{1,2}[-_/]\d{1,2}[-_/]\d{4}")
+    fn.write("Command=")
+    fn.write("\n")
+    fn.write("[regex_3]")
+    fn.write("Name=BBS Node Address")
+    fn.write("RegEx=\d{1,3}:\d{1,4}\/\d{1,3}")
+    fn.write("Command=%P/nodefinder/node.py '%M'")
+    fn.write("\n")
+    fn.write("[regex_4]")
+    fn.write("Name=URL/HTTP")
+    fn.write("RegEx=https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)")
+    fn.write("Command=firefox %M")
+    fn.write("\n")
+    fn.write("[regex_5]")
+    fn.write("Name=URL/Gopher")
+    fn.write("RegEx=gopher:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)")
+    fn.write("Command=lynx %M")
+    fn.write("\n")
+    fn.write("[regex_6]")
+    fn.write("Name=Magnet Link")
+    fn.write("RegEx=magnet:\?xt=urn:(btih:)?[A-Za-z0-9]{32,42}")
+    fn.write("Command=transmission-gtk %M")
+    fn.write("\n")
+    fn.write("[regex_7]")
+    fn.write("Name=ZIP Code")
+    fn.write("RegEx=[0-9]\{5\}(-[0-9]\{4\})?")
+    fn.write("Command=")
   
   print("")
   print("Config file created at path:")
@@ -608,6 +676,10 @@ class KBHit():
         telnet.write(b'\r')
         telnet.write(BBS['password'].encode('cp437'))
         telnet.write(b'\r')
+      elif self.key==chr(1): #CTRL-A Save screen
+        fn = getfilename()
+        savescreen2ansi(fn)
+        statusbar('Screen saved in: '+fn)
       elif self.key==chr(9):
         telnet.write(b'\t')
       #elif self.key==chr(8):
@@ -619,6 +691,8 @@ class KBHit():
         ui.menu()
       else:
         telnet.write(self.key.encode('cp437'))
+        if chr(27) in self.key.encode('cp437'):
+          time.sleep(0.3)
       
     time.sleep(0.01)
       
@@ -787,10 +861,11 @@ class UserInterface:
       writexypipe(xx,yy,7,40-xx,'|14M|08: |07Toggle Sounds [Active:|15{:5}|07]'.format(str(ENABLEKEYSOUND))); yy+=1
       writexypipe(xx,yy,7,40-xx,'|14C|08: |07Toggle Capture [Active:|15{:5}|07]'.format(str(CAPTURE))); yy+=1
       
-      yy = 20
+      yy = 19
       writexy(xx,yy,8,'CTRL-L: Send Login/Password');yy+=1
       writexy(xx,yy,8,'CTRL-R: Find RegEx matches');yy+=1
       writexy(xx,yy,8,'CTRL-C: Hangup and exit program');yy+=1
+      writexy(xx,yy,8,'CTRL-A: Save screen to file');yy+=1
       writexy(xx,yy,8,'     B: Back')
       
       xx,yy = 42,8
