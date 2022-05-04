@@ -24,6 +24,7 @@ KBESC = chr(27)
 KBCTRLA = chr(1)
 KBCTRLW = chr(23)
 KBCTRLN = chr(14)
+KBCTRLL = chr(12)
 KBBACKSP = chr(8)
 
 ANSICODES = ['A','B','C','D','E','F','G','l','N','O','P','m','n','s','u','J','H','f','h','K']
@@ -49,8 +50,8 @@ KBDEL = '[3~'
 
 KBUP = '[A'
 KBDOWN = '[B'
-KBLEFT = '[D'
-KBRIGHT = '[C'
+KBLEFT = chr(27)+'[D'
+KBRIGHT = chr(27)+'[C'
 
 config_input = (12,23,64,255) #x, y, width, maxsize
 config_input_gfx_lo = (1,22)
@@ -96,6 +97,7 @@ BBS['host'] = ''
 BBS['www'] = ''
 BBS['location'] = ''
 BBS['sysop'] = ''
+BBS['index'] = ''
 
 program_descripton = f'''
     Telnite v1.0
@@ -111,6 +113,16 @@ program_descripton = f'''
     Licensed under GPL3
    
     '''
+    
+cs_numbers = " 1234567890"
+cs_phone = " 1234567890#+-/"
+cs_upper = " QWERTYUIOPASDFGHJKLZXCVBNM"
+cs_lower = " qwertyuiopasdfghjklzxcvbnm"
+cs_symbols = " ~-=!@#$%^&*()_+[]}{;:'\"\|,<.>/?"
+cs_printable = cs_lower+cs_upper+cs_symbols+cs_numbers
+cs_email = cs_numbers+cs_lower+cs_upper+"@."
+cs_email = cs_email.replace(" ", "")
+cs_www = cs_numbers+cs_upper+cs_lower+"/-.:"
 
 telnet = telnetlib.Telnet()
 
@@ -118,9 +130,25 @@ class RawFormatter(argparse.HelpFormatter):
   def _fill_text(self, text, width, indent):
     return "\n".join([textwrap.fill(line, width) for line in textwrap.indent(textwrap.dedent(text), indent).splitlines()])
 
+def str2bool(v):
+  return v.lower() in ("yes", "true", "t", "1")
+  
+def initoBBS(filename):
+  global BBS
+  parser = configparser.ConfigParser()
+  parser.read(filename)
+  
+  for option in parser.options("BBS-Info"):
+    BBS[option] = parser.get("BBS-Info", option)
+  BBS['sounds'] = str2bool(BBS['sounds'])
+  
+
 def readconfigfile():
   global CONFIG,BEEP,WIDTH,HEIGHT,KBBACKSP,ENABLEKEYSOUND,KBKEYSOUND,KBENTERSOUND
   global MODEMSOUND
+  
+  if not os.path.isdir(CONFIGDIR):
+    os.makedirs(CONFIGDIR)
   
   all_config_files = [CONFIGDIR+APPNAME+'.ini', '/etc/'+APPNAME+'.ini', APPNAME+'.ini']
   CONFIG.read(all_config_files)
@@ -146,6 +174,31 @@ def displayansi(screen):
     os.write(1, screen)
     
 def bbslistselect(term):
+  global HOST,PORT,BBS
+  files = [f for f in os.listdir(CONFIGDIR) if f!=APPNAME+'.ini' and term.lower() in f.lower()]
+  if len(files)==0:
+    print("No matching BBSes!")
+    return False
+   
+  print("Results:")
+  print("{:>3}) {:30.30}".format('Num','Address'))
+  for i,f in enumerate(files):
+    print("{:>3}) {:30.30}".format(i,f[:-4]))
+    
+  try:
+    a= int(input("Select:"))
+  except:
+    print("Invalid Selection.")
+    return False
+    
+  print(files[a])
+  initoBBS(CONFIGDIR + files[a])
+  
+  HOST = BBS['address'].split(':')[0]
+  PORT = BBS['address'].split(':')[1]
+  return True
+  
+def bbstglistselect(term):
   global HOST,PORT,BBS
   lf = "/tmp/bbslist.csv"
   if not os.path.isfile(lf):
@@ -191,12 +244,18 @@ def bbslistselect(term):
     
   BBS['name'] = flds[0]
   BBS['address'] = HOST
-  BBS['port'] = PORT
   BBS['sysop'] = flds[1]
-  BBS['www'] = flds[5]
-  BBS['location'] = flds[6]
-  BBS['modem'] = flds[7]
-  
+  BBS['www'] = flds[6]
+  BBS['location'] = flds[7]
+  BBS['modem'] = flds[8]
+  return True
+
+def togglecapture():
+  global CAPTURE,CAPTUREFILE
+  CAPTURE=not CAPTURE
+  if CAPTURE:
+    CAPTUREFILE=time.strftime("capture_%Y%m%dT%H%M%SZ.ans", time.gmtime())
+  return CAPTURE
   
 def approximate_size(size, flag_1024_or_1000=True):
   units = {1000: ['KB', 'MB', 'GB'], 1024: ['KiB', 'MiB', 'GiB']}
@@ -224,6 +283,15 @@ def createconfigfile(path):
     fn.write("key=\n")
     fn.write("enter=\n")
     fn.write("modem=\n")
+  
+  print("")
+  print("Config file created at path:")
+  print(path)
+  print("If this is the current folder you are in, consider moving it, at")
+  print("the system config path, which is:")
+  print(CONFIGDIR)
+  print("All other config/app related files are saved there also.")
+  print("")
     
   
 def clicksound(c):
@@ -442,18 +510,10 @@ def renderansi(ansi):
               elif num == 1:
                 mode = 1
                 fattr = fattr | 0x08
-                # fg = fattr % 16
-                # bg = fattr // 16
-                # if fg<8:fg+=8
-                # fattr = fg + (bg*16)
                 textcolor(fattr)
               elif num == 5:
                 mode = 5
                 fattr = fattr | 0x80
-                # fg = fattr % 16
-                # bg = fattr // 16
-                # if fg<8:fg+=8
-                # fattr = fg + (bg*16)
                 textcolor(fattr)
               elif num == 7:
                 fattr = fattr // 16 + ((fattr % 16)*16)
@@ -463,7 +523,6 @@ def renderansi(ansi):
                 fattr = fg + (fg*16)
                 textcolor(fattr)
               elif num in ansifg:
-                #fattr = (fattr & 0xF8 + ansicolor[num])
                 fg = ansicolor[num]
                 bg = fattr // 16
                 if mode==1:
@@ -480,7 +539,8 @@ def renderansi(ansi):
       else:
         if s[i] in "0123456789?;": opt += s[i]
     i+=1
- 
+    
+
         
 class KBHit():
 
@@ -510,6 +570,9 @@ class KBHit():
     '''
     return sys.stdin.buffer.raw.read(4).decode(sys.stdin.encoding)
     #return sys.stdin.read(3)
+    
+  def readkey(self):
+    return self.getch()
 
 
   def getarrow(self):
@@ -529,7 +592,7 @@ class KBHit():
     return dr != []
 
   def checkkey_nonblock(self):
-    global x
+    global x,BBS
     if self.kbhit():
       self.key = self.getch()
       #writexy(1,1,13,"KEY HIT "+self.key)
@@ -539,6 +602,11 @@ class KBHit():
         #print(ord(c))
       clicksound(self.key)
       if self.key==chr(10):
+        telnet.write(b'\r')
+      elif self.key==chr(12): #CTRL-L
+        telnet.write(BBS['username'].encode('cp437'))
+        telnet.write(b'\r')
+        telnet.write(BBS['password'].encode('cp437'))
         telnet.write(b'\r')
       elif self.key==chr(9):
         telnet.write(b'\t')
@@ -569,6 +637,80 @@ class UserInterface:
     self.inputstring = ''
     self.colors = 16
     self.kb = KBHit()
+    self.logintime = 0
+    self.totaldatabytes = 0
+    
+  def getyesno(self,x,y,trueat,falseat,offat,default):
+    """
+    Function to get a Yes/No answer
+    trueat  : color in byte value for the No button
+    falseat : color in byte value for the Yes button
+    default : True/False to begin with 
+    """
+    key = ""
+    val = {0:'No ',1:'Yes'}
+    res = default
+    while key != KBENTER:
+        writexy(x,y,offat,val[True]+val[False])
+        if res == True:
+            writexy(x,y,trueat,val[res])
+        else:
+            writexy(x+3,y,falseat,val[res])
+        gotoxy(1,25)
+        key = self.kb.readkey()
+        if key == KBLEFT or key == KBRIGHT or key == " ":
+            res = not res
+        elif key == KBESC:
+            return None
+            break
+    #return val[res].lower().strip(" ")
+    return res
+    
+  def xinput(self,x,y,att,fillatt,chars,length,maxc,fc,default):
+    """
+    Simple function to get an input from user
+    att    : fg color
+    fillatt: bg color
+    chars  : string with valid characters.
+    length : length for the input box
+    maxc   : maximum size for the string to be entered
+    fc     : fill character for the bg
+    default: default value
+    """
+    pos = 0
+    res = default
+    key = ""
+    while key != KBENTER:
+        writexy(x,y,fillatt,fc*length)
+        writexy(x,y,att,res[pos:length+pos])
+        gotoxy(x+len(res[pos:length+pos]),y)
+        key = self.kb.readkey()
+        
+        if key in chars:
+            res = res + key
+            if len(res)>length:
+                if len(res)<maxc:
+                    pos += 1
+        elif key == " ":
+            res = res + " "
+            if len(res)>length:
+                if len(res)<maxc:
+                    pos += 1
+        elif key == KBBACK:
+            res = res[:-1]
+            pos = pos - 1
+            if pos < 0:
+                pos = 0
+        elif key == KBCTRLA:
+            res = ""
+        elif key == KBENTER:
+            break
+        elif key == KBESC:
+            res = "-1"
+            break
+    writexy(x,y,fillatt,fc*length)
+    writexy(x,y,fillatt,res[:length])
+    return res
     
   def savescreen(self):
     print(chr(27)+"[?1049h")
@@ -576,19 +718,108 @@ class UserInterface:
   def restorescreen(self):
     print(chr(27)+"[?1049l")
     
+  def savebbsmenu(self):
+    global BBS,HOST,PORT
+    clrscr()
+    displayansi(ansimg.BGSCR)
+    xx,yy = 17,10
+    dd = 16
+    aa = 15+16*3
+    
+    while True:
+      writexy(xx,yy,7,"Enter BBS Name:")
+      a = self.xinput(xx+dd,yy,aa,aa,cs_printable,35,35,' ',BBS['name'])
+      if a!="-1": BBS["name"] = a
+      yy+=1
+      writexy(xx,yy,7,"Enter UserName:")
+      a = self.xinput(xx+dd,yy,aa,aa,cs_printable,35,35,' ',BBS['username'])
+      if a!="-1": BBS["username"] = a
+      yy+=1
+      writexy(xx,yy,7,"Enter Password:")
+      a = self.xinput(xx+dd,yy,aa,aa,cs_printable,35,35,' ',BBS['password'])
+      if a!="-1": BBS["password"] = a
+      yy+=1
+      writexy(xx,yy,7,"Enter Comment :")
+      a = self.xinput(xx+dd,yy,aa,aa,cs_printable,35,35,' ',BBS['comment'])
+      if a!="-1": BBS["comment"] = a
+      yy+=1
+      writexy(xx,yy,7,"Enter Software:")
+      a = self.xinput(xx+dd,yy,aa,aa,cs_printable,35,35,' ',BBS['software'])
+      if a!="-1": BBS["software"] = a
+      yy+=1
+      writexy(xx,yy,7,"Enter Location:")
+      a = self.xinput(xx+dd,yy,aa,aa,cs_printable,35,35,' ',BBS['location'])
+      if a!="-1": BBS["location"] = a
+      yy+=1
+      
+      writexy(xx,yy,7,"Use Sound FXs?")
+      BBS["sounds"] = self.getyesno(xx+dd,yy,aa,3*16,7,BBS["sounds"])
+      yy+=1
+      
+      writexy(xx,yy,7,"Is the info entered correct?")
+      a = self.getyesno(xx+dd+14,yy,aa,3*16,7,False)
+      if a:
+        BBS["address"] = HOST+":"+str(PORT)
+        BBS['port'] = PORT
+        parser = configparser.ConfigParser()
+        parser.add_section('BBS-Info')
+        for key in BBS.keys():
+          parser.set('BBS-Info', key, str(BBS[key]))
+
+        with open(CONFIGDIR + HOST+'.ini', 'w') as f:
+          parser.write(f)
+        
+        break
+      writexy(xx,yy,7," "*40)
+      xx,yy = 17,10
+    
+    displayansi(ansimg.BGSCR)
+      
+    
   def menu(self):
+    global ENABLEKEYSOUND,CAPTURE,CAPTUREFILE,BBS
     self.savescreen()
      
     displayansi(ansimg.BGSCR)
+    while True:
+      xx,yy = 4,8
+      writexypipe(xx,yy,7,40-xx,'|14S|08: |07Save BBS'); yy+=1
+      writexypipe(xx,yy,7,40-xx,'|14M|08: |07Toggle Sounds [Active:|15{:5}|07]'.format(str(ENABLEKEYSOUND))); yy+=1
+      writexypipe(xx,yy,7,40-xx,'|14C|08: |07Toggle Capture [Active:|15{:5}|07]'.format(str(CAPTURE))); yy+=1
+      
+      yy = 20
+      writexy(xx,yy,8,'CTRL-L: Send Login/Password');yy+=1
+      writexy(xx,yy,8,'CTRL-R: Find RegEx matches');yy+=1
+      writexy(xx,yy,8,'CTRL-C: Hangup and exit program');yy+=1
+      writexy(xx,yy,8,'     B: Back')
+      
+      xx,yy = 42,8
+      writexy(xx,yy,7,'Total Data Transf: {}'.format(str(approximate_size(self.totaldatabytes)))); yy+=1
+      dt = datetime.datetime.now()-self.logintime
+      writexy(xx,yy,7,'Total Time Logged: {}'.format(str(dt))); yy+=2
+      writexy(xx,yy,7,'Name    : {:25.25}'.format(BBS['name'])); yy+=1
+      writexy(xx,yy,7,'Address : {:25.25}'.format(BBS['address'])); yy+=1
+      writexy(xx,yy,7,'Software: {:20.20}'.format(BBS['software'])); yy+=1
+      writexy(xx,yy,7,'Location: {:20.20}'.format(BBS['location'])); yy+=1
+      
+      
+      c = self.kb.getch()
+      if c in 'sS':
+        self.savebbsmenu()
+      elif c in 'mM':
+        ENABLEKEYSOUND = not ENABLEKEYSOUND
+      elif c in 'cC':
+        togglecapture()
+      elif c in 'bB': 
+        break
     
-    self.kb.getch()
     self.restorescreen()
     
   
   def run(self):
     global QUITEMODE
-    totaldatabytes = 0
-    logintime = datetime.datetime.now()
+    self.totaldatabytes = 0
+    self.logintime = datetime.datetime.now()
     ansibuff=""
     data=""
     buff=""
@@ -598,7 +829,7 @@ class UserInterface:
       except:
         print("\nConnection closed...")
         break
-      totaldatabytes += len(data)
+      self.totaldatabytes += len(data)
       if CAPTURE:
         with open(CAPTUREFILE,'a+') as logfile:
           logfile.write(data)
@@ -613,11 +844,11 @@ class UserInterface:
     if not QUITEMODE:
       textcolor(7)
       print("")
-      print("Total data transfer : {}".format(str(approximate_size(totaldatabytes))))
-      print("Connected at        : {}".format(logintime.strftime("%Y/%m/%d (y/m/d), %H:%M:%S")))
-      dt = datetime.datetime.now()-logintime
+      print("Total data transfer : {}".format(str(approximate_size(self.totaldatabytes))))
+      print("Connected at        : {}".format(self.logintime.strftime("%Y/%m/%d (y/m/d), %H:%M:%S")))
+      dt = datetime.datetime.now()-self.logintime
       print("Stayed connected for: {}".format(str(dt)))
-      print("Average bytes/sec   : {} per sec.".format(str(approximate_size(totaldatabytes // dt.total_seconds()))))
+      print("Average bytes/sec   : {} per sec.".format(str(approximate_size(self.totaldatabytes // dt.total_seconds()))))
         
 def parser():
   global HEIGHT,WIDTH,BEEP,CAPTURE,CAPTUREFILE,QUITEMODE,ENABLEKEYSOUND,KBBACKSP
@@ -629,6 +860,7 @@ def parser():
   parser.add_argument('-w', '--width', dest='width', action='store', metavar='width', help="Force terminal width in chars.")
   parser.add_argument('--height', dest='height', action='store', metavar='height', help="Force terminal height in chars.")
   parser.add_argument('--telnet-guide', dest='guide', action='store', metavar='term', help="Connect to a BBS from the TelnetBBSGuide.")
+  parser.add_argument('-l','--list', dest='list', action='store', metavar='term', help="Filter and List saved BBSes to choose from.")
   parser.add_argument('-b','--beep', dest='beep', action='store_true', help="Enable BEEP sound, using SOX.")
   parser.add_argument('-d','--del', dest='delete', action='store_true', help="Use #127/DEL code for backspace.")
   parser.add_argument('-c','--capture', dest='capture', action='store_true', help="Store all incoming ANSI data to file.")
@@ -636,10 +868,6 @@ def parser():
   parser.add_argument('-q','--quite', dest='quite', action='store_true', help="Don't display any app. related text")
   parser.add_argument('--no-sound', dest='nosound', action='store_true', help="Disable all sound FXs")
   args = parser.parse_args()
-  
-  
-  
-  
   
   
   if len(sys.argv) < 2:
@@ -662,9 +890,15 @@ def parser():
     else:
       HOST = args.address
       PORT = 23
+      
+    if os.path.isfile(CONFIGDIR + HOST + '.ini'):
+      initoBBS(CONFIGDIR + HOST + '.ini')
   
   if args.guide:
-    bbslistselect(args.guide)
+    bbstglistselect(args.guide)
+  
+  if args.list:
+    bbslistselect(args.list)
     
   if args.nosound:
     ENABLEKEYSOUND=False
@@ -695,6 +929,7 @@ def parser():
 
 readconfigfile()
 if not parser(): exit()
+if HOST=="": exit()
 clrscr()
 x,y=1,1
 init()
@@ -705,11 +940,15 @@ if ENABLEKEYSOUND:
   
 try:
   #telnet = telnetlib.Telnet(HOST,port=PORT,timeout=5)
+  
   if not QUITEMODE: 
     if BBS['name']!='':
       print("Connecting to {}".format(BBS['name']))
     else:
       print("Connecting to {}".format(HOST))
+      
+  print("Press CTRL-W for Options and Help...")
+  
   telnet.open(HOST,port=PORT,timeout=5)
   #telnet.set_debuglevel(100)
   time.sleep(1)
