@@ -12,6 +12,7 @@ import argparse
 from pycrt import *
 import base64
 import ansimg
+import re
 
 import pdb
 
@@ -72,7 +73,7 @@ esc = False
 
 APPNAME = "telnite"
 CONFIGDIR = os.path.join(os.path.expanduser("~"), ".config")+os.sep+APPNAME+os.sep
-CONFIG = configparser.ConfigParser()
+CONFIG = configparser.ConfigParser(interpolation=None)
 
 QUITEMODE = False
 CAPTURE=False
@@ -101,6 +102,7 @@ BBS['sysop'] = ''
 BBS['index'] = ''
 
 REGEX = []
+TEXT = ""
 
 program_descripton = f'''
     Telnite v1.0
@@ -171,7 +173,7 @@ def readconfigfile():
   KBENTERSOUND = CONFIG.get("sounds","enter",fallback='')
   MODEMSOUND = CONFIG.get("sounds","modem",fallback='')
 
-  ind=0
+  ind=1
   while True:
     if CONFIG.has_section("regex_"+str(ind)):
       section = "regex_"+str(ind)
@@ -182,9 +184,7 @@ def readconfigfile():
       REGEX.append(rx)
       ind+=1
     else:
-      break
-      
-  
+      break  
 
 def downloadfile(url,filename):
   os.system("wget {} -O {}".format(url,filename))
@@ -213,7 +213,7 @@ def bbslistselect(term):
     print("Invalid Selection.")
     return False
     
-  print(files[a])
+  #print(files[a])
   initoBBS(CONFIGDIR + files[a])
   
   HOST = BBS['address'].split(':')[0]
@@ -360,7 +360,50 @@ def createconfigfile(path):
   print(CONFIGDIR)
   print("All other config/app related files are saved there also.")
   print("")
+
+def findregex():
+  global screenbuffer,screenheight,screenwidth,REGEX,TEXT
+  found = False
+  results = []
+  ui.savescreen()
+  ix,iy = 3,3
+  a = textattr
+  textcolor(7)
+  clrscr()
+  writexy(1,1,7,"Results:")
+  writexy(1,2,7,"{:2} {:15} {:50}".format('##','Type','Result'))
     
+  i=0
+  for rx in REGEX: 
+    res = re.findall(rx['regex'], TEXT)
+    if res:
+      #print("M>>>"+m.group())
+      found = True
+      for r in res: 
+        writexy(1,iy,7,"{:2} {:15} {:50}".format(str(i),rx['name'],str(r)))
+        i+=1
+        s = rx['cmd']
+        s = s.replace('%M',str(r))
+        results.append(s)
+        iy+=1
+   
+  if not found:
+    writexy(1,4,7,'No RegEx matches found... Press key to continue.')
+    ui.kb.readkey()
+  else:
+    print("")
+    try:
+      a= int(input("Enter selection:"))
+      os.system(results[int(a)])
+    except:
+      print("Invalid Selection.")
+    
+    
+    
+
+  ui.restorescreen()
+  textcolor(a)
+      
   
 def clicksound(c):
   global ENABLEKEYSOUND,KBKEYSOUND,KBENTERSOUND
@@ -381,7 +424,7 @@ def beep():
     os.system("play -n -c1 synth 0.2 sine 500")
     
 def renderansi(ansi):
-  global x,y,WIDTH,HEIGHT
+  global x,y,WIDTH,HEIGHT,TEXT
   global fattr,oldxy,mode,esc,opt
     
   def checkxy():
@@ -449,6 +492,7 @@ def renderansi(ansi):
         beep()
       elif s[i] == chr(12):
         clrscr()
+        TEXT = ''
         x=1
         y=1
       elif s[i]==chr(14):
@@ -468,6 +512,7 @@ def renderansi(ansi):
         #pdb.set_trace()
         #print(str(fattr)+"\r\n")
         writexy(x,y,fattr,s[i])
+        TEXT += s[i]
         #logopt("fg:{} - bg:{} - char:{}".format(str(fattr % 16),str(fattr // 16),s[i]))
         esc=False
         x += 1
@@ -533,6 +578,7 @@ def renderansi(ansi):
             x = 1
             y = 1
             clrscr()
+            TEXT = ''
         elif s[i] == 'l': #reset mode? nope
           pass
         elif s[i] == 'K': #clear EOL
@@ -676,6 +722,8 @@ class KBHit():
         telnet.write(b'\r')
         telnet.write(BBS['password'].encode('cp437'))
         telnet.write(b'\r')
+      elif self.key==chr(18): #CTRL-R find regex
+        findregex()
       elif self.key==chr(1): #CTRL-A Save screen
         fn = getfilename()
         savescreen2ansi(fn)
@@ -691,10 +739,9 @@ class KBHit():
         ui.menu()
       else:
         telnet.write(self.key.encode('cp437'))
-        if chr(27) in self.key.encode('cp437'):
-          time.sleep(0.3)
+        
       
-    time.sleep(0.01)
+    #time.sleep(0.01)
       
 
 class UserInterface:
@@ -1002,10 +1049,11 @@ def parser():
   
   return res
 
+clrscr()
 readconfigfile()
 if not parser(): exit()
 if HOST=="": exit()
-clrscr()
+
 x,y=1,1
 init()
 ui = UserInterface()
