@@ -363,6 +363,7 @@ def savescreen2ansi(filename):
   cl = [0,4,2,6,1,5,3,7]
   fg,bg = 7,0
   ofg,obg = 7,0
+  olda = 7
   ansi = ''
   CRLF = chr(10)+chr(13)
   
@@ -374,28 +375,27 @@ def savescreen2ansi(filename):
   for yy in range(screenheight):
     for xx in range(screenwidth):
       c,a = screenbuffer[xx+(yy*screenwidth)]
-      ansi = chr(27)+'['
-      if ord(c)!=0:
+      if a!=olda:
+        ansi = chr(27)+'['
         fg = a % 16
         bg = a // 16
-        if fg != ofg:
-          if fg>=8:
-            ansi+='1;'+str(30+cl.index(fg-8))
-          else:
-            ansi+='0;'+str(30+cl.index(fg))
-          ofg = fg
-        if bg!=obg:
-          if bg>=8:
-            ansi += '1;'+str(40+cl.index(bg-8))
-          else:
-            ansi += str(40+cl.index(bg))
-          obg = bg
-        if ansi[-1]!='[':
-          ansi+='m'
-          f.write(ansi)
-        f.write(c)
+        if fg>7:
+          ansi+='1;'+str(30+cl.index(fg-8))
+        else:
+          ansi+='0;'+str(30+cl.index(fg))
+        ofg = fg
+        f.write(ansi+'m')
+        ansi = chr(27)+'['
+        if bg>7:
+          ansi = ''
+        else:
+          ansi += str(40+cl.index(bg))
+        obg = bg
+        f.write(ansi+'m')
+        olda = a
+      f.write(c)
     f.write(CRLF)
-    ansi = ''
+    
   
   f.close()
 
