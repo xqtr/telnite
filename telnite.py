@@ -18,6 +18,8 @@ import pdb
 
 BBSLISTFILE = "https://www.telnetbbsguide.com/bbslist/bbslist.csv"
 
+ZMODEMSTR = ""
+
 KBENTER = chr(10)
 KBBACK = chr(127)
 KBTAB = chr(9)
@@ -424,7 +426,7 @@ def beep():
     os.system("play -n -c1 synth 0.2 sine 500")
     
 def renderansi(ansi):
-  global x,y,WIDTH,HEIGHT,TEXT
+  global x,y,WIDTH,HEIGHT,TEXT,ZMODEMSTR
   global fattr,oldxy,mode,esc,opt
     
   def checkxy():
@@ -479,6 +481,19 @@ def renderansi(ansi):
           # esc = True
       elif s[i] == chr(0):
         pass
+      elif s[i] == chr(24): #zmodem?
+        if len(s)-i>3:
+          zstr = s[i+1:i+5]
+          if zstr.strip() == 'B000': #download
+            os.system(ZMODEMSTR)
+          elif zstr.strip() == 'B001': #upload
+            pass
+        else:  #not enough chars to check if it's a zmodem request
+          writexy(x,y,fattr,s[i])
+          TEXT += s[i]
+          esc=False
+          x += 1
+          checkxy()
       elif s[i] == chr(8): #backspace
         x = max(1,x-1)
         gotoxy(x,y)
