@@ -75,7 +75,9 @@ esc = False
 
 APPNAME = "telnite"
 CONFIGDIR = os.path.join(os.path.expanduser("~"), ".config")+os.sep+APPNAME+os.sep
+TMPDIR = '/tmp/'
 CONFIG = configparser.ConfigParser(interpolation=None)
+
 
 QUITEMODE = False
 CAPTURE=False
@@ -132,6 +134,15 @@ cs_email = cs_email.replace(" ", "")
 cs_www = cs_numbers+cs_upper+cs_lower+"/-.:"
 
 telnet = telnetlib.Telnet()
+
+def istermux():
+  global CONFIGDIR,TMPDIR
+  CONFIGDIR = os.path.join(os.path.expanduser("~"), ".config")+os.sep+APPNAME+os.sep
+  s = os.path.expanduser("~")
+  if "com.termux" in s:
+    TMPDIR = '/data/data/com.termux/files/usr/tmp/'
+  else:
+    TMPDIR = '/tmp/'
 
 class RawFormatter(argparse.HelpFormatter):
   def _fill_text(self, text, width, indent):
@@ -223,8 +234,8 @@ def bbslistselect(term):
   return True
   
 def bbstglistselect(term):
-  global HOST,PORT,BBS
-  lf = "/tmp/bbslist.csv"
+  global HOST,PORT,BBS,TMPDIR
+  lf = TMPDIR + "bbslist.csv"
   if not os.path.isfile(lf):
     downloadfile(BBSLISTFILE,lf)
   if not os.path.isfile(lf):

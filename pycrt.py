@@ -254,8 +254,8 @@ rows, columns = os.popen('stty size', 'r').read().split()
 screenheight = int(rows)
 screenwidth = int(columns)
 
-screenheight = 25
-screenwidth = 80
+#screenheight = 25
+#screenwidth = 80
 
 screenbuffer = []
 wherex = 1
@@ -273,8 +273,8 @@ def init():
   screenheight = int(rows)
   screenwidth = int(columns)
   
-  screenheight = 25
-  screenwidth = 80
+  #screenheight = 25
+  #screenwidth = 80
   
   screenbuffer.clear()
   wherex = 1
