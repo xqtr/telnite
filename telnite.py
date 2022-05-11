@@ -135,7 +135,7 @@ cs_www = cs_numbers+cs_upper+cs_lower+"/-.:"
 
 telnet = telnetlib.Telnet()
 
-def istermux():
+def termux():
   global CONFIGDIR,TMPDIR
   CONFIGDIR = os.path.join(os.path.expanduser("~"), ".config")+os.sep+APPNAME+os.sep
   s = os.path.expanduser("~")
@@ -1076,6 +1076,7 @@ def parser():
   return res
 
 clrscr()
+termux()
 readconfigfile()
 if not parser(): exit()
 if HOST=="": exit()
