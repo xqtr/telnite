@@ -4,7 +4,7 @@ An ANSI-BBS telnet client for use in terminals like Gnome_terminal, xterm,
 etc.
 
 Created by XQTR of Another Droid BBS
-
+'
 [] https://github.com/xqtr/telnite
 [] telnet://andr01d.zapto.org:9999
 
@@ -25,7 +25,7 @@ optional arguments:
   --create-config       Create a default config file (.ini) in current dir.
   -q, --quite           Don't display any app. related text
   --no-sound            Disable all sound FXs
-  
+'
 ## Features
 
 - Save incoming data/ANSI to a file (capture)
