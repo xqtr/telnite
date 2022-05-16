@@ -4,7 +4,7 @@ An ANSI-BBS telnet client for use in terminals like Gnome_terminal, xterm,
 etc.
 
 Created by XQTR of Another Droid BBS
-'
+```
 [] https://github.com/xqtr/telnite
 [] telnet://andr01d.zapto.org:9999
 
@@ -25,7 +25,7 @@ optional arguments:
   --create-config       Create a default config file (.ini) in current dir.
   -q, --quite           Don't display any app. related text
   --no-sound            Disable all sound FXs
-'
+```
 ## Features
 
 - Save incoming data/ANSI to a file (capture)
@@ -40,33 +40,33 @@ optional arguments:
   You can use Telnite in **3 different modes**. The simplest is to assign a network address for a BBS and connect to it, by using the -a option.
   
   Example:
-  ./telnite -a andr01d.zapto.org:9999
+  `./telnite -a andr01d.zapto.org:9999`
   
   The port number is optional and if is omitted the default telnet port (23) will be used. The second method is to use the --telnet-guide option. This option will provide you with a a list of BBSes, downloaded from the Internet and be able to select one. Because the list is big enough, you have to specify a search term, to filter the results. For example:
-'''  
+`
   ./telnite --telnet-guide droid
-'''  
+`
   The command above, will download the BBS liste, from Telnet Guide site (telnetbbsguide.com) and search for BBSes containing the word "droid" in their name. The result is something like this:
-'''  
+```
 Results:
 Num) Name                           Address                       :Port 
   0) Android City                   androidcity.retro-os.live     :     
   1) Another Droid BBS              andr01d.zapto.org             :9999 
 Select:
-'''
+```
 Press a number (0/1), with ENTER and you will get connected to that BBS. The third and last mode, is similar to the last option, but is used for your saved/favorite* BBSes. You use the -l option with a search term, to filter results. This option will look into the address of the BBS and not for its name! 
 
 For example:
-'''
+```
 ./telnite -l andr
-'''
+```
 Will show a result like this:
-'''
+```
 Results:
 Num) Address                       
   0) andr01d.zapto.org             
 Select:
-'''
+```
 
 *When connected to a BBS you can press CTRL-W and then S to save settings for the currently connected BBS, into your .config folder.*
 
