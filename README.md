@@ -34,9 +34,10 @@ optional arguments:
 - Send login credentials with CTRL-L
 - Save favorite BBSes to your .config folder and provide different settings for each BBS
 - Sound FXs, for connecting to a BBS (modem sound) and keystrokes
+- It is usabe under TERMUX
 - ...perhaps more, that i forgot to mention :)
 
-## USAGE 
+## Usage
   You can use Telnite in **3 different modes**. The simplest is to assign a network address for a BBS and connect to it, by using the -a option.
   
   Example:
@@ -76,3 +77,14 @@ While running the app. you can press CTRL-W and see a graphical/ANSI menu. This 
 
 From this menu, you can save a favorite BBS, into your .config folder, toggle sound fxs on/off and toggle capture of incoming data on/off.
 
+## Bugs
+Up to this time, the known bugs or so, are:
+
+- If you press multiple times the cursor keys, it may produce an ESC key keystroke
+- For debugging purposes no exception handling is used. So you may expirience program crashes, because of bad ANSI escape sequences. Some BBS servers and/or ANSI editors, create ANSI escape sequences that are not valid. In that case Telnite may crash. I have tried to implement many ANSI codes and variable formats of them, but still not all are handled. If you happen to find them, send a note to my email.
+
+## Contact
+- Telnet: andr01d.zapto.org:9999
+- WWW: andr01d.zapto.org:8080
+- Gopher: andr01d.zapto.org:7070
+- Email: xqtr@gmx.com
