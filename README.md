@@ -1,7 +1,6 @@
 # telnite
 
-An ANSI-BBS telnet client for use in terminals like Gnome_terminal, xterm,
-etc.
+An ANSI-BBS telnet client for use in terminals like Gnome_terminal, xterm,etc. It's built to be used as an easy solution for an ANSI telnet client, in Termux and plain/vanilla systems. You just grab it via github (```git clone https://github.com/xqtr/telnite```) and you are ready to go!
 
 Created by XQTR of Another Droid BBS
 ```
@@ -77,11 +76,12 @@ While running the app. you can press CTRL-W and see a graphical/ANSI menu. This 
 
 From this menu, you can save a favorite BBS, into your .config folder, toggle sound fxs on/off and toggle capture of incoming data on/off.
 
-## Bugs
+## Bugs // To Do
 Up to this time, the known bugs or so, are:
 
 - If you press multiple times the cursor keys, it may produce an ESC key keystroke
 - For debugging purposes no exception handling is used. So you may expirience program crashes, because of bad ANSI escape sequences. Some BBS servers and/or ANSI editors, create ANSI escape sequences that are not valid. In that case Telnite may crash. I have tried to implement many ANSI codes and variable formats of them, but still not all are handled. If you happen to find them, send a note to my email.
+- Z/Y/X Modem downloads are not yet implemented... and perhaps it wont be. 
 
 ## Contact
 - Telnet: andr01d.zapto.org:9999
