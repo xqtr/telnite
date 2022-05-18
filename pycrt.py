@@ -254,9 +254,6 @@ rows, columns = os.popen('stty size', 'r').read().split()
 screenheight = int(rows)
 screenwidth = int(columns)
 
-#screenheight = 25
-#screenwidth = 80
-
 screenbuffer = []
 wherex = 1
 wherey = 1
@@ -272,9 +269,6 @@ def init():
   rows, columns = os.popen('stty size', 'r').read().split()
   screenheight = int(rows)
   screenwidth = int(columns)
-  
-  #screenheight = 25
-  #screenwidth = 80
   
   screenbuffer.clear()
   wherex = 1
@@ -677,14 +671,6 @@ def writexypipe(x,y,attr,width,txt):
     textcolor(OldAttr)
     gotoxy(OldX, OldY)
     
-    
-def setwindow(y1,y2):
-  sys.stdout.write('\033[' + str(y1) + ';' + str(y2) + 'r');
-  sys.stdout.flush()
-    
-def resetwindow():
-  setwindow(1,25)
-    
 def cls():
   os.system('cls' if os.name == 'nt' else 'clear')
   init()
@@ -909,22 +895,6 @@ def ansibox(x1,y1,x2,y2,box=box_ascii):
   for i in range(y2-y1-1):
     gotoxy(x1,y1+1+i)
     write(box[3]+box[8]*(x2-x1-1)+box[4])
-    
-def popupbox(title,text,y):
-  global cfg_popup_title_at, cfg_popup_text_at, cfg_popup_pause_at
-  global cfg_popup_pause_str, cfg_popup_box_at
-  d = len(text)
-  d2 = d // 2
-  textcolor(cfg_popup_box_at)
-  if d < 25:
-    cleararea(26,y,54,y+3," ")
-    ansibox(26,y,54,y+3)
-  else:
-    cleararea(38-d2,y,42+d2,y+3," ")
-    ansibox(38-d2,y,42+d2,y+3)
-  writexy(38-d2,y,cfg_popup_title_at,title)  
-  writexy(40-d2,y+1,cfg_popup_text_at,text)
-  writexy(28,y+2,cfg_popup_pause_at,cfg_popup_pause_str)
 
 def charxy(x,y):
   return (getcharat(x,y),getattrat(x,y))

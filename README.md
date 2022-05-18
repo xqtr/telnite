@@ -82,9 +82,19 @@ Up to this time, the known bugs or so, are:
 - If you press multiple times the cursor keys, it may produce an ESC key keystroke
 - For debugging purposes no exception handling is used. So you may expirience program crashes, because of bad ANSI escape sequences. Some BBS servers and/or ANSI editors, create ANSI escape sequences that are not valid. In that case Telnite may crash. I have tried to implement many ANSI codes and variable formats of them, but still not all are handled. If you happen to find them, send a note to my email.
 - Z/Y/X Modem downloads are not yet implemented... and perhaps it wont be. 
+- For better window scrolling, Telnite, uses the ability of the current terminal window to scroll the screen up, when it reaches the bottom. So some, big ANSI files, may not display well, in case there is a mismatch in the terminal size.
 
 ## Contact
 - Telnet: andr01d.zapto.org:9999
 - WWW: andr01d.zapto.org:8080
 - Gopher: andr01d.zapto.org:7070
 - Email: xqtr@gmx.com
+
+## Changelog
+```
+2022-05-18: Remove some commented code
+            Fixed issue with the dimensions of the terminal
+            Removed some unused code from the PyCRT module
+
+
+```

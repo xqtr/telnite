@@ -203,6 +203,7 @@ def downloadfile(url,filename):
   os.system("wget {} -O {}".format(url,filename))
   
 def displayansi(screen):
+  global utf
   if utf:
     print(''.join(str(screen,"cp437")))
   else:
@@ -450,46 +451,24 @@ def renderansi(ansi):
       x=1
       y=HEIGHT
   
-  
-  # matc = [[32 for x in range(h)] for y in range(w)] 
-  # matfg = [[7 for x in range(h)] for y in range(w)]
-  # matbg = [[7 for x in range(h)] for y in range(w)]
-  
-  
   ansifg = range(30,38)
   ansibg = range(40,48)
-  #ansifgi = [range(90,98)]
-  #ansibgi = [range(100,108)]
   pipefg = [0,4,2,6,1,5,3,7]
   
   ansicolor = {30:0, 31:4, 32:2, 33:6, 34:1, 35:5, 36:3, 37:7, 38:0, 39:0, 40:0, 41:64, 42:32, 43:96, 44:16, 45:80, 46:48, 47:112}
-  #pipefgh = [8,12,10,14,9,13,11,15]
-  #pipebg = [16,20,18,22,17,21,19,23]
-  #fgcol = []
-  #x=0
-  #y=0
   bottom = 0
   
   if len(ansi) == 0:
     return ''
   
   i = 0
-  
   s=ansi
-  #with open('opts.log','a+') as optfile:
-  #            optfile.write(ansi+"\r\n")
-  
+ 
                 
   while i<len(s):
-    #print(i,len(s))
     if not esc:
       if s[i] == chr(27):
         esc = True
-        # i+=1
-        # if s[i]!="[":
-          # esc = False
-        # else:
-          # esc = True
       elif s[i] == chr(0):
         pass
       elif s[i] == chr(24): #zmodem?
@@ -535,11 +514,8 @@ def renderansi(ansi):
         checkxy()
         gotoxy(x,y)
       else:
-        #pdb.set_trace()
-        #print(str(fattr)+"\r\n")
         writexy(x,y,fattr,s[i])
         TEXT += s[i]
-        #logopt("fg:{} - bg:{} - char:{}".format(str(fattr % 16),str(fattr // 16),s[i]))
         esc=False
         x += 1
         checkxy()
@@ -547,8 +523,6 @@ def renderansi(ansi):
       if s[i] == '[':
         pass
       elif s[i] in ANSICODES:
-        #esc = False
-        #logopt("xODE: "+s[i])
         if s[i] == 'C': #forward
           tx = x
           if opt != '': d = int(opt) 
@@ -735,11 +709,7 @@ class KBHit():
     global x,BBS
     if self.kbhit():
       self.key = self.getch()
-      #writexy(1,1,13,"KEY HIT "+self.key)
-      
-      # print(self.key)
-      #for c in self.key:
-        #print(ord(c))
+
       clicksound(self.key)
       if self.key==chr(10):
         telnet.write(b'\r')
@@ -765,10 +735,7 @@ class KBHit():
         ui.menu()
       else:
         telnet.write(self.key.encode('cp437'))
-        
-      
-    #time.sleep(0.01)
-      
+     
 
 class UserInterface:
   # Uses the curses terminal handling library to display a chat log,
@@ -803,7 +770,7 @@ class UserInterface:
             writexy(x,y,trueat,val[res])
         else:
             writexy(x+3,y,falseat,val[res])
-        gotoxy(1,25)
+        gotoxy(1,HEIGT)
         key = self.kb.readkey()
         if key == KBLEFT or key == KBRIGHT or key == " ":
             res = not res
@@ -948,7 +915,8 @@ class UserInterface:
       writexy(xx,yy,7,'Name    : {:25.25}'.format(BBS['name'])); yy+=1
       writexy(xx,yy,7,'Address : {:25.25}'.format(BBS['address'])); yy+=1
       writexy(xx,yy,7,'Software: {:20.20}'.format(BBS['software'])); yy+=1
-      writexy(xx,yy,7,'Location: {:20.20}'.format(BBS['location'])); yy+=1
+      writexy(xx,yy,7,'Location: {:20.20}'.format(BBS['location'])); yy+=2
+      writexy(xx,yy,7,'Size    : {:3}x{:3}'.format(WIDTH,HEIGHT));
       
       
       c = self.kb.getch()
@@ -1000,7 +968,7 @@ class UserInterface:
         
 def parser():
   global HEIGHT,WIDTH,BEEP,CAPTURE,CAPTUREFILE,QUITEMODE,ENABLEKEYSOUND,KBBACKSP
-  global HOST,PORT
+  global HOST,PORT, utf
   res = True
   #parser = argparse.ArgumentParser(description="Telnite // Python3 ANSI-BBS Telnet client for terminal.")
   parser = argparse.ArgumentParser(description=program_descripton, formatter_class=RawFormatter)
@@ -1011,6 +979,7 @@ def parser():
   parser.add_argument('-l','--list', dest='list', action='store', metavar='term', help="Filter and List saved BBSes to choose from.")
   parser.add_argument('-b','--beep', dest='beep', action='store_true', help="Enable BEEP sound, using SOX.")
   parser.add_argument('-d','--del', dest='delete', action='store_true', help="Use #127/DEL code for backspace.")
+  parser.add_argument('--cp437', dest='cp437', action='store_true', help="Use CP437 encoding instead of UTF8")
   parser.add_argument('-c','--capture', dest='capture', action='store_true', help="Store all incoming ANSI data to file.")
   parser.add_argument('--create-config', dest='config', action='store_true', help="Create a default config file (.ini) in current dir.")
   parser.add_argument('-q','--quite', dest='quite', action='store_true', help="Don't display any app. related text")
@@ -1022,6 +991,9 @@ def parser():
     #parser.print_usage()
     parser.print_help()
     sys.exit(1)
+  
+  if args.cp437:
+    utf = False
   
   if args.quite:
     QUITEMODE=True
@@ -1068,7 +1040,7 @@ def parser():
     try:
       HEIGHT=int(args.height)
     except:
-      HEIGHT=80
+      HEIGHT=25
       
   if args.beep:
     BEEP = True
@@ -1083,6 +1055,10 @@ if HOST=="": exit()
 
 x,y=1,1
 init()
+
+WIDTH = screenwidth
+HEIGHT = screenheight
+
 ui = UserInterface()
 
 if ENABLEKEYSOUND:
